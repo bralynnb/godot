@@ -8,6 +8,9 @@ if p.exists():
  p.unlink()
 p=root/'index.html'
 s=p.read_text()
+if 'const nativeFetch' in s:
+ print('Web loader already prepared')
+ raise SystemExit(0)
 loader='''<script>
 const nativeFetch = window.fetch.bind(window);
 window.fetch = async function(input, options) {
