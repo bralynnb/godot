@@ -30,7 +30,7 @@ func _unhandled_input(e):
 		if e.button_index == MOUSE_BUTTON_WHEEL_UP: zoom_level = min(1.7,zoom_level+0.1)
 		if e.button_index == MOUSE_BUTTON_WHEEL_DOWN: zoom_level = max(0.8,zoom_level-0.1)
 		if e.button_index == MOUSE_BUTTON_LEFT:
-			var m = (e.position-Vector2(320,200))/zoom_level+Vector2(320,200)-Vector2(320,64)
+			var m = (e.position/0.75-Vector2(320,200))/zoom_level+Vector2(320,200)-Vector2(320,64)
 			target = Vector2(m.x/44+m.y/22,m.y/22-m.x/44)
 	if e is InputEventKey and e.pressed:
 		if e.keycode == KEY_R: player=Vector2(7,8); target=Vector2(-1,-1)
@@ -57,7 +57,9 @@ func _process(delta):
 	queue_redraw()
 
 func poly(points, color):
-	draw_colored_polygon(PackedVector2Array(points),Color(color))
+	var snapped=PackedVector2Array()
+	for p in points: snapped.append(p.round())
+	draw_colored_polygon(snapped,Color(color))
 
 func box(r: Rect2, h: float, top: String, left: String, right: String):
 	var a=iso(r.position)
@@ -70,7 +72,7 @@ func box(r: Rect2, h: float, top: String, left: String, right: String):
 	poly([a+v,b+v,c+v,d+v],top)
 	draw_polyline(PackedVector2Array([d+v,c+v,b+v]),Color("ac9675"),1)
 
-func rect(p,s,c): draw_rect(Rect2(p,s),Color(c))
+func rect(p,s,c): draw_rect(Rect2(p.round(),s.round()),Color(c))
 
 func person():
 	var p=iso(player).round()
@@ -94,21 +96,36 @@ func prop(o):
 	var p=iso(r.end)
 	if o.kind=="house":
 		box(r,o.h,"4c5261","75594e","4b4550")
-		for z in range(8,int(o.h)-4,7):
-			draw_line(iso(r.position+Vector2(0,r.size.y))-Vector2(0,z),p-Vector2(0,z),Color("886757"))
-		for x in [0.25,0.65]:
-			for h in [22,46]:
-				var a=iso(r.position+Vector2(r.size.x*x,r.size.y))-Vector2(0,h)
-				poly([a,a+Vector2(10,5),a+Vector2(10,-8),a+Vector2(0,-13)],"e7b76f")
-				draw_line(a+Vector2(5,2),a+Vector2(5,-10),Color("694c49"),2)
-		box(Rect2(r.position-Vector2(0.12,0.12),r.size+Vector2(0.24,0.24)),o.h+3,"555b6a","303643","252e3e")
-		# Roof rim only; restore the wall faces below the roof.
-		box(r,o.h,"555b6a","75594e","4b4550")
+		# Individual brick courses on both visible walls.
+		for row in range(1,int(o.h/5)):
+			var z=row*5
+			for col in range(int(r.size.x*5)):
+				var u=(col+0.5*(row%2))/5.0
+				if u+0.18>r.size.x: continue
+				var q=iso(r.position+Vector2(u,r.size.y))-Vector2(0,z)
+				poly([q,q+Vector2(4,2),q+Vector2(4,-1),q+Vector2(0,-3)], ["66504d","796052","59464b","846554"][(row*7+col*3)%4])
+			for col in range(int(r.size.y*5)):
+				var u=(col+0.5*(row%2))/5.0
+				if u+0.18>r.size.y: continue
+				var q=iso(r.position+Vector2(r.size.x,u))-Vector2(0,z)
+				poly([q,q+Vector2(-4,2),q+Vector2(-4,-1),q+Vector2(0,-3)], ["3b3949","514451","423c4d"][(row+col)%3])
+		# Roof gravel in a restricted palette.
+		for ix in range(int(r.size.x*12)):
+			for iy in range(int(r.size.y*12)):
+				var q=iso(r.position+Vector2(ix/12.0,iy/12.0))-Vector2(0,o.h)
+				if (ix*13+iy*7)%5==0: rect(q.round(),Vector2.ONE,"69707a")
+				elif (ix+iy)%3==0: rect(q.round(),Vector2.ONE,"414654")
 		for x in [0.22,0.67]:
 			for h in [20,44]:
 				var a=iso(r.position+Vector2(r.size.x*x,r.size.y))-Vector2(0,h)
 				poly([a,a+Vector2(10,5),a+Vector2(10,-8),a+Vector2(0,-13)],"efba73")
-				draw_line(a+Vector2(5,2),a+Vector2(5,-10),Color("5c4746"),2)
+				# Pixel curtains, window ledges and warm checkerboard falloff.
+				for xx in range(1,10):
+					for yy in range(-11,2):
+						if (xx+yy)%3==0: rect((a+Vector2(xx,yy+xx/2.0)).round(),Vector2.ONE,"b78055")
+				draw_line(a+Vector2(5,2),a+Vector2(5,-10),Color("493b43"),2)
+				draw_line(a+Vector2(0,-5),a+Vector2(10,0),Color("62494a"),1)
+				draw_line(a+Vector2(-2,1),a+Vector2(12,8),Color("ad8b70"),2)
 		box(Rect2(r.position+Vector2(0.4,0.4),Vector2(0.4,0.4)),o.h+10,"7c716a","504e54","393d4b")
 	elif o.kind=="stall":
 		box(r,11,"ac815d","725348","4b4043")
@@ -132,16 +149,24 @@ func prop(o):
 		rect(p-Vector2(2,38),Vector2(3,38),"394250")
 		rect(p-Vector2(5,41),Vector2(9,9),"ecc78a")
 		rect(p-Vector2(6,43),Vector2(11,3),"59616c")
-		for i in range(3): draw_circle(p-Vector2(0,36),float(10+i*6),Color(1,0.71,0.35,0.025))
+		for xx in range(-12,13):
+			for yy in range(-12,13):
+				if xx*xx+yy*yy<120 and (xx+yy)%4==0:
+					rect(p+Vector2(xx,yy-36),Vector2.ONE,"81705b")
 
 func _draw():
-	draw_set_transform(Vector2(320,200)*(1-zoom_level),0,Vector2.ONE*zoom_level)
+	draw_set_transform(Vector2(320,200)*(1-zoom_level)*0.75,0,Vector2.ONE*zoom_level*0.75)
 	box(Rect2(0,0,13,13),-8,"354552","1e2b39","172331")
 	for x in range(13):
 		for y in range(13):
 			var a=iso(Vector2(x,y))
 			var col=["465258","4b565b","424f56","50595b"][(x*7+y*13)%4]
 			poly([a+Vector2(0,1),a+Vector2(21,11),a+Vector2(0,21),a+Vector2(-21,11)],col)
+			for j in range(14):
+				var dx=(j*13+x*7+y*3)%35-17
+				var dy=(j*7+x*3)%15+3
+				if abs(dx)/2+abs(dy-11)<9:
+					rect(a+Vector2(dx,dy),Vector2(2,1),"677077" if j%3==0 else "35414e")
 			if (x*17+y*7)%9==0: draw_line(a+Vector2(-7,11),a+Vector2(3,16),Color("647074"))
 	for pos in [Vector2(8,6),Vector2(5,8),Vector2(10,3)]:
 		var a=iso(pos)
@@ -162,7 +187,7 @@ func _draw():
 			var tt=float(i-1)/20
 			draw_line(start.lerp(end,tt)+Vector2(0,sin(tt*PI)*15),p,Color("232e3d"))
 		if i%2==0: rect(p,Vector2(3,4),"f2c88b")
-	draw_set_transform(Vector2.ZERO)
+	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*0.75)
 	draw_string(font,Vector2(20,28),"L A N T E R N   C O U R T",HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("e7c9a0"))
 	draw_string(font,Vector2(20,45),"An evening in the market",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("879da9"))
 	draw_string(font,Vector2(20,382),"WASD / ARROWS  Walk    SHIFT  Run    CLICK  Walk to    WHEEL  Zoom    R  Reset",HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("b8c1be"))
