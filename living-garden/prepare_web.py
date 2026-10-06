@@ -24,5 +24,5 @@ window.fetch = async (resource, options) => {
 };
 </script>'''
 if 'const originalFetch' not in s: s=s.replace('<script src="index.js"></script>',loader+'\n<script src="index.js"></script>')
-s=s.replace('<title>Sakura — A Living Garden</title>','<title>Sakura — A Living Garden</title>')
+s=s.replace('</head>','<style>html,body{width:100%;height:100%;margin:0;overflow:hidden}#canvas{width:100vw;height:100dvh;display:block}</style></head>')
 f.write_text(s)
