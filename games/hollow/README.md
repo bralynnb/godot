@@ -1,6 +1,6 @@
 # Hollow — A Quiet Descent
 
-A real Godot 4.5 project: three small, connected isometric dungeon rooms using the supplied animated character. No combat, enemies, inventory, or objectives. Just walk, explore, and enjoy the ambience.
+A real Godot 4.5 project: three connected isometric dungeon rooms using the supplied animated character. No combat, enemies, inventory, or objectives. Just walk, explore, and enjoy the ambience.
 
 ## Run in Godot
 
@@ -9,6 +9,8 @@ Open `project.godot` in Godot 4.5 and press F6/F5. The project uses the Compatib
 ## Controls
 
 - WASD or arrow keys: walk in eight directions.
+- Mouse wheel or +/-: zoom. Z: overview.
+- L: toggle live lighting. R: toggle specular floor response.
 - Escape: pause/resume.
 - M: mute/unmute.
 - F: fullscreen in the desktop game. The browser version also has a fullscreen button.
@@ -19,12 +21,14 @@ Exit the entry vault through the opening along the lower-right edge. Walk around
 ## Implementation
 
 - Angled 2:1 isometric floor projection, raised back walls, and cutaway front walls.
-- 480 × 270 logical canvas, nearest-filtered pixel textures.
+- 960 × 540 logical canvas, nearest-filtered pixel textures.
 - Screen-relative controls: right moves right on screen. Collision uses unprojected floor coordinates; the character stays upright and unstretched.
 - All 64 supplied GIF frames extracted into six views; views are selected and mirrored for eight-direction movement. Original appearance is retained; no generative redraw.
 - CharacterBody2D foot collision, normalized diagonal input, short acceleration/deceleration, animation driven by actual travel.
 - Real PointLight2D torchlight with gentle flicker, cool ambient light and moonlight.
-- Original floor/wall pixel art, animated water highlights, dust and looping ambient audio.
+- Higgsfield-generated unlit entry vault, separate pillar and iron-sconce sprites. No flames, light pools, window beams, or floor glare baked into the entry background.
+- Live PointLight2D lighting, occluders, projected height shadows, animated flame geometry and optional specular material response. Normal/specular maps describe surfaces only.
+- Procedural subsidiary rooms, animated water highlights, dust and looping ambient audio.
 - Three rooms with short fade transitions. No third-party game framework.
 
 ## Web export
