@@ -1,6 +1,6 @@
 # Hollow — A Quiet Descent
 
-A real Godot 4.5 project: three small, connected dungeon rooms using the supplied animated character. No combat, enemies, inventory, or objectives. Just walk, explore, and enjoy the ambience.
+A real Godot 4.5 project: three small, connected isometric dungeon rooms using the supplied animated character. No combat, enemies, inventory, or objectives. Just walk, explore, and enjoy the ambience.
 
 ## Run in Godot
 
@@ -14,11 +14,13 @@ Open `project.godot` in Godot 4.5 and press F6/F5. The project uses the Compatib
 - F: fullscreen in the desktop game. The browser version also has a fullscreen button.
 - Touch: drag anywhere on the game to walk. Release to stop.
 
-Exit the entry vault through the opening on the right. Walk around the cistern and take the north stairs to the moon chamber. Every connection works in both directions.
+Exit the entry vault through the opening along the lower-right edge. Walk around the cistern and take the small doorway in the back-right wall to the moon chamber. Every connection works in both directions.
 
 ## Implementation
 
+- Angled 2:1 isometric floor projection, raised back walls, and cutaway front walls.
 - 480 × 270 logical canvas, nearest-filtered pixel textures.
+- Screen-relative controls: right moves right on screen. Collision uses unprojected floor coordinates; the character stays upright and unstretched.
 - All 64 supplied GIF frames extracted into six views; views are selected and mirrored for eight-direction movement. Original appearance is retained; no generative redraw.
 - CharacterBody2D foot collision, normalized diagonal input, short acceleration/deceleration, animation driven by actual travel.
 - Real PointLight2D torchlight with gentle flicker, cool ambient light and moonlight.
@@ -29,7 +31,7 @@ Exit the entry vault through the opening on the right. Walk around the cistern a
 
 Install the Godot 4.5 export templates and use the Web preset (thread support off). Standard exports can be served from any static HTTP host; `file://` does not work. The included hosted build compresses the unmodified official Godot 4.5 WASM runtime and expands it in the browser with DecompressionStream. It needs a modern browser with WebGL2.
 
-The `web` folder is generated output; source assets and scripts are in `assets`, `scripts`, and `scenes`.
+The `dist` folder is generated output; source assets and scripts are in `assets`, `scripts`, and `scenes`.
 
 ## Asset notes
 

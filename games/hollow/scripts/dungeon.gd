@@ -6,6 +6,7 @@ const ATLAS = preload("res://assets/walker.png")
 const LIGHT = preload("res://assets/light.png")
 var room := 0
 var player: CharacterBody2D
+var actor: Node2D
 var sprite: Sprite2D
 var scenery: Node2D
 var lights: Array[PointLight2D] = []
@@ -59,14 +60,17 @@ func _ready() -> void:
 	sprite.vframes = 6
 	sprite.position.y = -21
 	sprite.frame = 5 * 64
-	player.add_child(sprite)
+	actor = Node2D.new()
+	add_child(actor)
+	actor.add_child(sprite)
+	actor.position = project_iso(player.position)
 	var halo := PointLight2D.new()
 	halo.texture = LIGHT
 	halo.texture_scale = 0.66
 	halo.color = Color(0.71, 0.81, 1.0)
 	halo.energy = 0.55
 	halo.position.y = -15
-	player.add_child(halo)
+	actor.add_child(halo)
 	ambience = AudioStreamPlayer.new()
 	var sound: AudioStreamOggVorbis = load("res://assets/ambience.ogg")
 	sound.loop = true
@@ -113,7 +117,12 @@ func wall(rect: Rect2) -> void:
 func lamp(pos: Vector2, color: Color, energy: float, scale_value: float, flame := true) -> void:
 	var light := PointLight2D.new()
 	light.texture = LIGHT
-	light.position = pos
+	var screen_pos := project_iso(pos)
+	if flame:
+		screen_pos.y -= 26
+	if room == 2 and pos == Vector2(190, 78):
+		screen_pos.y -= 23
+	light.position = screen_pos
 	light.color = color
 	light.energy = energy
 	light.texture_scale = scale_value
@@ -121,7 +130,7 @@ func lamp(pos: Vector2, color: Color, energy: float, scale_value: float, flame :
 	scenery.add_child(light)
 	lights.append(light)
 	if flame:
-		flames.append(pos)
+		flames.append(screen_pos)
 
 func build_room() -> void:
 	for child in scenery.get_children():
@@ -157,17 +166,17 @@ func build_room() -> void:
 	else:
 		wall(Rect2(0, 247, 480, 40))
 	if room == 0:
-		lamp(Vector2(66, 48), Color("ffc078"), 1.7, 1.35)
-		lamp(Vector2(405, 48), Color("ffa667"), 1.6, 1.3)
-		lamp(Vector2(449, 166), Color("b48358"), 0.9, 0.8, false)
+		lamp(Vector2(85, 78), Color("ffc078"), 1.7, 1.35)
+		lamp(Vector2(22, 226), Color("ffa667"), 1.6, 1.3)
+		lamp(Vector2(458, 166), Color("b48358"), 0.9, 0.8, false)
 	elif room == 1:
-		lamp(Vector2(70, 49), Color("f8bc85"), 1.4, 1.15)
-		lamp(Vector2(410, 49), Color("f8bc85"), 1.4, 1.15)
+		lamp(Vector2(90, 78), Color("f8bc85"), 1.4, 1.15)
+		lamp(Vector2(22, 227), Color("f8bc85"), 1.4, 1.15)
 		lamp(Vector2(240, 159), Color("589eaf"), 0.9, 1.6, false)
 	else:
-		lamp(Vector2(240, 46), Color("afceff"), 2.4, 1.7, false)
-		lamp(Vector2(76, 48), Color("ffc484"), 1.25, 1.05)
-		lamp(Vector2(405, 48), Color("ffc484"), 1.25, 1.05)
+		lamp(Vector2(190, 78), Color("afceff"), 1.7, 1.5, false)
+		lamp(Vector2(380, 78), Color("ffc484"), 1.25, 1.05)
+		lamp(Vector2(22, 226), Color("ffc484"), 1.25, 1.05)
 	visited[room] = true
 	hud.text = "%02d  /  %s" % [room + 1, ROOM_NAMES[room]]
 
@@ -217,11 +226,14 @@ func _physics_process(delta: float) -> void:
 		started = true
 		intro.hide()
 		ambience.play()
-	player.velocity = player.velocity.move_toward(direction * SPEED, 1100.0 * delta)
+	var desired_world := unproject_direction(direction * SPEED)
+	player.velocity = player.velocity.move_toward(desired_world, 2200.0 * delta)
 	player.move_and_slide()
-	moving = player.get_real_velocity().length() > 2.0
+	actor.position = project_iso(player.position)
+	var screen_velocity := project_direction(player.get_real_velocity())
+	moving = screen_velocity.length() > 2.0
 	if moving:
-		walk_frame += player.get_real_velocity().length() * delta * 0.19
+		walk_frame += screen_velocity.length() * delta * 0.19
 		var row := 5
 		sprite.flip_h = false
 		if direction.y < -0.35:
@@ -252,6 +264,7 @@ func change_room(next: int, arrival: Vector2) -> void:
 	await fade.finished
 	room = next
 	player.position = arrival
+	actor.position = project_iso(arrival)
 	player.velocity = Vector2.ZERO
 	build_room()
 	var reveal := create_tween()
@@ -271,7 +284,7 @@ func _draw() -> void:
 	if not is_instance_valid(player):
 		return
 	# Contact shadow behind the feet; the sprite itself remains unscaled while walking.
-	draw_set_transform(player.position + Vector2(0, -1), 0, Vector2(1, 0.32))
+	draw_set_transform(project_iso(player.position) + Vector2(0, -1), 0, Vector2(1, 0.32))
 	draw_circle(Vector2.ZERO, 10, Color(0.015, 0.02, 0.035, 0.47))
 	draw_set_transform(Vector2.ZERO)
 	for p in flames:
@@ -285,11 +298,22 @@ func _draw() -> void:
 	for i in range(32):
 		var x := fposmod(i * 97.3 + sin(clock * 0.15 + i) * 8, 438) + 21
 		var y := fposmod(i * 37.7 - clock * (1 + i % 3) * 0.5, 162) + 79
-		draw_rect(Rect2(Vector2(x, y).floor(), Vector2.ONE), Color(0.74, 0.79, 0.81, 0.14 + 0.12 * sin(clock + i)))
+		draw_rect(Rect2((project_iso(Vector2(x, y)) + Vector2(0, -7)).floor(), Vector2.ONE), Color(0.74, 0.79, 0.81, 0.14 + 0.12 * sin(clock + i)))
 	if room == 1:
 		for i in range(8):
 			var x := 167.0 + fposmod(i * 29 + clock * 2, 139)
 			var y := 133.0 + i * 9
-			draw_line(Vector2(x, y), Vector2(x + 7 + sin(clock + i) * 3, y), Color(0.35, 0.66, 0.72, 0.15))
+			draw_line(project_iso(Vector2(x, y)), project_iso(Vector2(x + 7 + sin(clock + i) * 3, y)), Color(0.35, 0.66, 0.72, 0.15))
 	if room == 2:
-		draw_colored_polygon(PackedVector2Array([Vector2(221, 57), Vector2(259, 57), Vector2(320, 238), Vector2(186, 238)]), Color(0.55, 0.68, 0.94, 0.035))
+		draw_colored_polygon(PackedVector2Array([project_iso(Vector2(155, 78)) - Vector2(0, 10), project_iso(Vector2(225, 78)) - Vector2(0, 10), project_iso(Vector2(310, 215)), project_iso(Vector2(180, 215))]), Color(0.55, 0.68, 0.94, 0.06))
+
+# Physics remains on the flat logical floor. Only visual nodes are projected.
+# This keeps collision widths stable without skewing the character sprite.
+func project_iso(point: Vector2) -> Vector2:
+	return Vector2(240, 68) + project_direction(point - Vector2(22, 78))
+
+func project_direction(value: Vector2) -> Vector2:
+	return Vector2((value.x * 0.58 - value.y * 1.5) * 0.72, (value.x * 0.58 + value.y * 1.5) * 0.36)
+
+func unproject_direction(value: Vector2) -> Vector2:
+	return Vector2((value.x / 0.72 + value.y / 0.36) / (2.0 * 0.58), (value.y / 0.36 - value.x / 0.72) / (2.0 * 1.5))
